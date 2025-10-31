@@ -1,3 +1,5 @@
+// Versi 2.0 - Update paksa
+
 import { createClient } from '@vercel/kv';
 import express from 'express';
 import cors from 'cors';
