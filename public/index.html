@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontrol Musik Roblox</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+        button { font-size: 1.2rem; padding: 10px; margin: 5px; }
+        div { margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Panel Kontrol Musik</h1>
+    
+    <button id="skip-btn">SKIP LAGU</button>
+    <div id="status">Memuat status...</div>
+
+    <script>
+        const API_URL = '/api'; // Otomatis menggunakan domain yang sama
+        const skipButton = document.getElementById('skip-btn');
+        const statusDiv = document.getElementById('status');
+
+        // Fungsi untuk mengirim perintah SKIP
+        skipButton.addEventListener('click', async () => {
+            const response = await fetch(`${API_URL}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'skip' })
+            });
+            alert('Perintah SKIP terkirim!');
+            checkStatus();
+        });
+
+        // Fungsi untuk mengecek lagu yang sedang diputar
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/now-playing`);
+                const data = await response.json();
+                statusDiv.innerText = `Lagu Saat Ini: ${data.title}`;
+            } catch (e) {
+                statusDiv.innerText = 'Gagal memuat status.';
+            }
+        }
+
+        // Cek status saat halaman dimuat dan setiap 5 detik
+        checkStatus();
+        setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>
