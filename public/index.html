@@ -6,13 +6,20 @@
     <title>Kontrol Musik Roblox</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #f9f9f9; }
-        button { font-size: 1rem; padding: 10px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
         div { margin-top: 20px; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1, h2 { color: #333; }
+        input[type="text"] { width: 95%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { font-size: 1rem; padding: 10px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+        
         #skip-btn { background: #ffc107; color: #333; }
-        #status { font-size: 1.1rem; }
-        #playlist-editor textarea { width: 95%; height: 200px; font-family: monospace; font-size: 0.9rem; padding: 10px;}
-        #save-playlist-btn { background: #28a745; color: white; }
+        #add-song-btn { background: #007bff; color: white; width: 100%; }
+        #save-status { margin-top: 10px; }
+
+        /* Style untuk daftar playlist */
+        #playlist-display ul { list-style: none; padding: 0; }
+        #playlist-display li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        #playlist-display li span { font-size: 0.9rem; color: #555; }
+        #playlist-display button.delete-btn { background: #dc3545; color: white; padding: 5px 10px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -24,30 +31,36 @@
         <div id="status">Memuat status...</div>
     </div>
 
-    <div id="playlist-editor">
-        <h2>Editor Playlist</h2>
-        <p>Tempel playlist Anda di sini dalam format JSON. Dapatkan `rbxassetid://` dari audio Anda di Roblox.</p>
-        <textarea id="playlist-textarea" placeholder='[
-  { "title": "Lagu Keren", "id": "rbxassetid://12345" },
-  { "title": "Lagu Lain", "id": "rbxassetid://67890" }
-]'></textarea>
-        <button id="save-playlist-btn">Simpan Playlist</button>
+    <div>
+        <h2>Tambah Lagu Baru</h2>
+        <input type="text" id="song-title" placeholder="Judul Lagu (Contoh: Lagu Keren)">
+        <input type="text" id="song-id" placeholder="ID Lagu (Contoh: rbxassetid://12345)">
+        <button id="add-song-btn">Tambah ke Playlist</button>
         <p id="save-status"></p>
     </div>
 
+    <div id="playlist-display">
+        <h2>Playlist Saat Ini di Server</h2>
+        <ul id="playlist-list">
+            </ul>
+    </div>
+
     <script>
-        const API_URL = '/api'; // Otomatis menggunakan domain yang sama
-        
+        const API_URL = '/api';
+        let currentPlaylist = []; // Variabel untuk menyimpan playlist saat ini
+
         // --- Referensi Elemen ---
         const skipButton = document.getElementById('skip-btn');
         const statusDiv = document.getElementById('status');
-        const playlistTextarea = document.getElementById('playlist-textarea');
-        const savePlaylistButton = document.getElementById('save-playlist-btn');
+        const songTitleInput = document.getElementById('song-title');
+        const songIdInput = document.getElementById('song-id');
+        const addSongButton = document.getElementById('add-song-btn');
         const saveStatus = document.getElementById('save-status');
+        const playlistList = document.getElementById('playlist-list');
 
         // --- Fungsi Kontrol Cepat ---
         skipButton.addEventListener('click', async () => {
-            const response = await fetch(`${API_URL}/command`, {
+            await fetch(`${API_URL}/command`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'skip' })
@@ -66,55 +79,103 @@
             }
         }
 
-        // --- Fungsi Editor Playlist ---
+        // --- Fungsi Playlist ---
+
+        // 1. Memuat playlist dari server saat halaman dibuka
         async function loadCurrentPlaylist() {
             try {
                 const response = await fetch(`${API_URL}/playlist`);
                 const data = await response.json();
-                // Format JSON dengan indentasi (2 spasi) agar rapi
-                playlistTextarea.value = JSON.stringify(data.lagu, null, 2); 
+                currentPlaylist = data.lagu || []; // Simpan ke variabel global
+                renderPlaylist();
             } catch (e) {
                 console.error("Gagal memuat playlist:", e);
                 saveStatus.innerText = "Gagal memuat playlist saat ini.";
             }
         }
 
-        savePlaylistButton.addEventListener('click', async () => {
-            const playlistJsonString = playlistTextarea.value;
-            
-            // Validasi JSON sederhana di sisi client
-            try {
-                JSON.parse(playlistJsonString);
-            } catch (e) {
-                saveStatus.innerText = "Error: Teks di atas bukan JSON yang valid!";
+        // 2. Menampilkan playlist ke halaman web
+        function renderPlaylist() {
+            playlistList.innerHTML = ""; // Kosongkan daftar
+            if (currentPlaylist.length === 0) {
+                playlistList.innerHTML = "<li><span>Playlist kosong.</span></li>";
                 return;
             }
 
+            currentPlaylist.forEach((song, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>
+                        <strong>${song.title}</strong><br>
+                        <small>${song.id}</small>
+                    </span>
+                    <button class="delete-btn" data-index="${index}">Hapus</button>
+                `;
+                // Tambahkan event listener untuk tombol hapus
+                li.querySelector('.delete-btn').addEventListener('click', () => {
+                    removeSong(index);
+                });
+                playlistList.appendChild(li);
+            });
+        }
+
+        // 3. Menambahkan lagu baru
+        addSongButton.addEventListener('click', () => {
+            const title = songTitleInput.value;
+            const id = songIdInput.value;
+
+            if (!title || !id) {
+                alert("Judul dan ID lagu tidak boleh kosong!");
+                return;
+            }
+
+            // Tambahkan lagu baru ke array
+            const newSong = { title: title, id: id };
+            currentPlaylist.push(newSong);
+
+            // Kirim *seluruh* array playlist yang baru ke server
+            savePlaylistToServer(currentPlaylist, "Lagu ditambahkan!");
+
+            // Kosongkan input
+            songTitleInput.value = "";
+            songIdInput.value = "";
+        });
+
+        // 4. Menghapus lagu
+        function removeSong(index) {
+            // Hapus lagu dari array berdasarkan index-nya
+            currentPlaylist.splice(index, 1);
+            // Kirim array yang sudah diperbarui ke server
+            savePlaylistToServer(currentPlaylist, "Lagu dihapus!");
+        }
+
+        // 5. Fungsi untuk menyimpan perubahan ke server (Vercel KV)
+        async function savePlaylistToServer(newPlaylist, successMessage) {
             saveStatus.innerText = "Menyimpan...";
             try {
                 const response = await fetch(`${API_URL}/playlist`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // Kirim string JSON di dalam objek
-                    body: JSON.stringify({ playlistJson: playlistJsonString }) 
+                    // Kirim array-nya langsung di body
+                    body: JSON.stringify(newPlaylist) 
                 });
-                
-                const result = await response.json();
 
                 if (response.ok) {
-                    saveStatus.innerText = "Sukses! Playlist telah disimpan.";
+                    saveStatus.innerText = `Sukses! ${successMessage}`;
+                    renderPlaylist(); // Perbarui tampilan daftar
                 } else {
+                    const result = await response.json();
                     saveStatus.innerText = `Error: ${result.error || 'Gagal menyimpan'}`;
                 }
             } catch (e) {
                 saveStatus.innerText = `Error koneksi: ${e.message}`;
             }
-        });
+        }
 
         // --- Inisialisasi Halaman ---
         checkStatus();
         setInterval(checkStatus, 5000); // Cek status lagu setiap 5 detik
-        loadCurrentPlaylist(); // Muat playlist saat ini ke textarea
+        loadCurrentPlaylist(); // Muat playlist saat ini
     </script>
 </body>
 </html>

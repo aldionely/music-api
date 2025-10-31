@@ -103,14 +103,20 @@ app.get('/api/now-playing', async (req, res) => {
   }
 });
 
-app.post('/api/now-playing', async (req, res) => {
+app.post('/api/playlist', async (req, res) => {
   try {
-    // req.body diharapkan: { "title": "Judul Lagu" }
-    await kv.set('nowPlaying', req.body);
-    res.status(200).json({ message: "Status diperbarui" });
+    // KITA SEKARANG MENERIMA ARRAY SECARA LANGSUNG DARI BODY
+    const playlistArray = req.body; 
+
+    if (!Array.isArray(playlistArray)) {
+      return res.status(400).json({ error: "Input harus berupa array JSON" });
+    }
+    
+    await kv.set('playlist', playlistArray); // Simpan array baru
+    res.status(200).json({ message: "Playlist diperbarui!", playlist: playlistArray });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Gagal menyimpan status ke KV' });
+    res.status(500).json({ error: 'Gagal menyimpan playlist ke KV', details: error.message });
   }
 });
 
