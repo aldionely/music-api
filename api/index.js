@@ -1,5 +1,4 @@
-// Versi 2.0 - Update paksa
-
+// Versi 3.0 - Perbaikan Final API
 import { createClient } from '@vercel/kv';
 import express from 'express';
 import cors from 'cors';
@@ -20,7 +19,10 @@ app.use(cors());
 
 /*
  * Endpoint #1: PLAYLIST
+ * =======================
  */
+
+// GET: Mengambil playlist dari KV
 app.get('/api/playlist', async (req, res) => {
   try {
     let playlist = await kv.get('playlist');
@@ -36,24 +38,27 @@ app.get('/api/playlist', async (req, res) => {
   }
 });
 
+// POST: Menyimpan playlist baru (INI KODE YANG SUDAH DIPERBAIKI)
 app.post('/api/playlist', async (req, res) => {
   try {
-    // Panel admin akan mengirim string JSON
-    const playlistArray = JSON.parse(req.body.playlistJson);
+    // KITA SEKARANG MENERIMA ARRAY SECARA LANGSUNG DARI BODY
+    const playlistArray = req.body; 
+
     if (!Array.isArray(playlistArray)) {
       return res.status(400).json({ error: "Input harus berupa array JSON" });
     }
     
-    await kv.set('playlist', playlistArray);
+    await kv.set('playlist', playlistArray); // Simpan array baru
     res.status(200).json({ message: "Playlist diperbarui!", playlist: playlistArray });
   } catch (error) {
-    console.error(error);
+    console.error(error); // Ini akan mencetak error KV jika ada
     res.status(500).json({ error: 'Gagal menyimpan playlist ke KV', details: error.message });
   }
 });
 
 /*
  * Endpoint #2: COMMAND (Perintah dari Admin)
+ * ==========================================
  */
 app.get('/api/command', async (req, res) => {
   try {
@@ -91,6 +96,7 @@ app.delete('/api/command', async (req, res) => {
 
 /*
  * Endpoint #3: NOW PLAYING (Laporan dari Roblox)
+ * ===============================================
  */
 app.get('/api/now-playing', async (req, res) => {
   try {
@@ -105,20 +111,14 @@ app.get('/api/now-playing', async (req, res) => {
   }
 });
 
-app.post('/api/playlist', async (req, res) => {
+app.post('/api/now-playing', async (req, res) => {
   try {
-    // KITA SEKARANG MENERIMA ARRAY SECARA LANGSUNG DARI BODY
-    const playlistArray = req.body; 
-
-    if (!Array.isArray(playlistArray)) {
-      return res.status(400).json({ error: "Input harus berupa array JSON" });
-    }
-
-    await kv.set('playlist', playlistArray); // Simpan array baru
-    res.status(200).json({ message: "Playlist diperbarui!", playlist: playlistArray });
+    // req.body diharapkan: { "title": "Judul Lagu" }
+    await kv.set('nowPlaying', req.body);
+    res.status(200).json({ message: "Status diperbarui" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Gagal menyimpan playlist ke KV', details: error.message });
+    res.status(500).json({ error: 'Gagal menyimpan status ke KV' });
   }
 });
 
