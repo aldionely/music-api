@@ -111,7 +111,7 @@ app.post('/api/playlist', async (req, res) => {
     if (!Array.isArray(playlistArray)) {
       return res.status(400).json({ error: "Input harus berupa array JSON" });
     }
-    
+
     await kv.set('playlist', playlistArray); // Simpan array baru
     res.status(200).json({ message: "Playlist diperbarui!", playlist: playlistArray });
   } catch (error) {
